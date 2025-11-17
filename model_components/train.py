@@ -255,8 +255,7 @@ def main():
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999))
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999))
     
-    # Learning Rate Schedulers (MultiStepLR for staged decay)
-    # Decay by 0.1 at specified milestones (e.g., [100, 150] means decay at epoch 100 and 150)
+    # Learning Rate Schedulers
     LR_DECAY_MILESTONES = config.get('lr_decay_milestones', [100])
     LR_DECAY_GAMMA = config.get('lr_decay_gamma', 0.1)
     

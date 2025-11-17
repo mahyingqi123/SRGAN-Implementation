@@ -27,5 +27,9 @@
     "early_stopping_min_delta": 0.0,
     "resume_pretrain": false,
     "pretrain_checkpoint_path": "models/pretrain_checkpoint.pth",
-    "pretrain_epochs": 500
+    "pretrain_epochs": 500,
+    "test_model_path": "models/best_model.pth",
+    "test_data_path": "DIV2K_valid_HR/DIV2K_valid_HR",
+    "test_output_dir": "results",
+    "upscale_factor": 4
 }

@@ -100,6 +100,16 @@ The training is trained with a batch of 16, and cropped a random a 96x96 image.
 
 The generator is trained first using the MSE loss to learn the mapping from LR to HR images. Then the overall GAN is trained using with the pretrained generator as a starting point. This is to avoid undesired local optima.
 
+For the loss function, I made a small modification to the original loss function. I added a pixel loss to the loss function to avoid the collapse of the generator. This is because without this loss, the generator will learn to output unrecognizable images. It could be the sheer number of epochs needed to train the generator to output realistic images. The original paper ran for 1million iterations for pretraining, and 200k iterations for training. But with only 300-500 epochs, this loss calculation is better. Arguably there's a difference a difference with original perceptual loss after adding this pixel loss. But the pixel loss is more stable and faster to train.
+
 The pretraining is done for 200 epochs with a learning rate of 0.0001.
 
 The training for GAN is done in 2 stages, first at a learning rate of 0.0001 for 50 epochs, then at a learning rate of 0.00001 for 50 epochs.
+
+## Results
+
+Example of the generated image with side by side comparison with the original image and the bicubic upscaled image.
+
+![Example of the generated image with side by side comparison with the original image and the bicubic upscaled image.](output.jpg)
+
+
