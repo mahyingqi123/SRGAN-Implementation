@@ -112,4 +112,9 @@ Example of the generated image with side by side comparison with the original im
 
 ![Example of the generated image with side by side comparison with the original image and the bicubic upscaled image.](output.jpg)
 
+The test results are as follows:
+
+| Model | PSNR | SSIM |
+|-------|------|------|
+| SRGAN | 26.8441 | 0.7556 |
 
