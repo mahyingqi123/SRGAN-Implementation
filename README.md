@@ -116,5 +116,9 @@ The test results are as follows:
 
 | Model | PSNR | SSIM |
 |-------|------|------|
-| SRGAN | 26.8441 | 0.7556 |
+| SRGAN with Pixel Loss | 26.8441 | 0.7556 |
+| SRGAN without Pixel Loss | 12.1817 | 0.3517 |
+| SRResNet | 27.9728 | 0.7913 |
+
+
 

@@ -152,10 +152,10 @@ def run_test():
             total_ssim += current_ssim
 
             # Save Output Images
-            base_name = hr_image_path.stem
-            save_image(sr_tensor, output_path / f"{base_name}_SRGAN.png")
-            save_image(bicubic_tensor, output_path / f"{base_name}_Bicubic.png")
-            save_image(hr_tensor, output_path / f"{base_name}_Original.png")
+            # base_name = hr_image_path.stem
+            # save_image(sr_tensor, output_path / f"{base_name}_SRGAN.png")
+            # save_image(bicubic_tensor, output_path / f"{base_name}_Bicubic.png")
+            # save_image(hr_tensor, output_path / f"{base_name}_Original.png")
             
             print(f"  PSNR: {current_psnr:.4f} dB | SSIM: {current_ssim:.4f}")
 

@@ -2,10 +2,16 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 from torchvision import transforms
+import json
 
 class SRGANLoss(nn.Module):
     def __init__(self, use_vgg54: bool = True) -> None:
         super(SRGANLoss, self).__init__()
+
+        with open('config.json', 'r') as f:
+            config = json.load(f)
+            
+        self.use_pixel_loss = config['use_pixel_loss']
         
         vgg = models.vgg19(pretrained=True)
         
@@ -32,7 +38,10 @@ class SRGANLoss(nn.Module):
         Arguably there's little difference between using the perceptual loss and mse loss after
         adding this pixel loss. But the pixel loss is more stable and faster to train.
         """
-        return self.mse_loss(sr_img, hr_img)
+        if self.use_pixel_loss:
+            return self.mse_loss(sr_img, hr_img)
+        else:
+            return 0.0
 
     def content_loss(self, sr_img: torch.Tensor, hr_img: torch.Tensor) -> torch.Tensor:
         # VGG expects images in [0, 1] range, convert to [0, 1]

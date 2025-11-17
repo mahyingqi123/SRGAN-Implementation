@@ -75,7 +75,7 @@ def save_model(
     epoch: Optional[int] = None,
     g_loss: Optional[float] = None,
     d_loss: Optional[float] = None,
-    val_content_loss: Optional[float] = None  
+    val_psnr: Optional[float] = None  
 ) -> None:
     
     save_dir = Path(save_path).parent
@@ -97,8 +97,8 @@ def save_model(
         checkpoint['g_loss'] = g_loss
     if d_loss is not None:
         checkpoint['d_loss'] = d_loss
-    if val_content_loss is not None:                    
-        checkpoint['best_val_content_loss'] = val_content_loss 
+    if val_psnr is not None:                    
+        checkpoint['best_val_psnr'] = val_psnr 
     
     
     torch.save(checkpoint, save_path)
@@ -117,7 +117,7 @@ def load_model(
     logger = logging.getLogger(__name__)
     if not Path(load_path).exists():
         logger.info(f"Checkpoint not found at {load_path}. Starting from scratch.")
-        return 0, float('inf')
+        return 0, 0.0  
 
     checkpoint = torch.load(load_path, map_location=device)
     
@@ -125,7 +125,7 @@ def load_model(
     discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
     
     start_epoch = 0
-    best_val_content_loss = float('inf') 
+    best_val_psnr = 0.0  
 
     if optimizer_G is not None and 'optimizer_G_state_dict' in checkpoint:
         optimizer_G.load_state_dict(checkpoint['optimizer_G_state_dict'])
@@ -133,11 +133,15 @@ def load_model(
         optimizer_D.load_state_dict(checkpoint['optimizer_D_state_dict'])
     if 'epoch' in checkpoint:
         start_epoch = checkpoint['epoch']
-    if 'best_val_content_loss' in checkpoint:  
-        best_val_content_loss = checkpoint['best_val_content_loss']  
+
+    if 'best_val_psnr' in checkpoint:  
+        best_val_psnr = checkpoint['best_val_psnr']
+    elif 'best_val_content_loss' in checkpoint: # previous checkpoint format
+        logger.info("Old checkpoint format detected (content loss). Starting fresh with PSNR metric.")
+        best_val_psnr = 0.0
 
     logger.info(f"Loaded checkpoint from {load_path}. Resuming from epoch {start_epoch + 1}.")
-    return start_epoch, best_val_content_loss  
+    return start_epoch, best_val_psnr  
 
 
 def validate(
@@ -222,7 +226,11 @@ def main():
     NUM_EPOCHS = config['num_epochs']
     RESUME_TRAINING = config['resume_training']
     CHECKPOINT_PATH = config['checkpoint_path']
-    BEST_MODEL_PATH = "models/best_model.pth"
+    USE_PIXEL_LOSS = config['use_pixel_loss']
+    if USE_PIXEL_LOSS:
+        BEST_MODEL_PATH = "models/best_model_with_pixel.pth"
+    else:
+        BEST_MODEL_PATH = "models/best_model_without_pixel.pth"
     LEARNING_RATE = config['learning_rate']
     PRETRAINED_GENERATOR_PATH = Path("models/srresnet_mse.pth")
     
@@ -288,7 +296,7 @@ def main():
 
     val_loader = DataLoader(
         val_dataset,
-        batch_size=1, # Validate one image at a time
+        batch_size=1, 
         shuffle=False,
         num_workers=NUM_WORKERS,
         pin_memory=True
@@ -298,7 +306,7 @@ def main():
     # Load Checkpoint or Start Fresh
     if RESUME_TRAINING:
         logger.info(f"Resuming training from checkpoint: {CHECKPOINT_PATH}")
-        start_epoch, best_val_content_loss = load_model(  
+        start_epoch, best_val_psnr = load_model(  
             generator, discriminator, optimizer_G, optimizer_D, CHECKPOINT_PATH, device
         )
         # Step schedulers to correct epoch after loading
@@ -307,7 +315,7 @@ def main():
             scheduler_D.step()
     else:
         start_epoch = 0
-        best_val_content_loss = float('inf') 
+        best_val_psnr = 0.0  
 
     # Early Stopping Parameters
     EARLY_STOPPING_PATIENCE = config.get('early_stopping_patience', 10)
@@ -368,14 +376,15 @@ def main():
         logger.info(f"Validation PSNR: {val_psnr:.4f} dB")
         logger.info(f"Validation Content Loss: {val_content_loss:.4f}")  
         
-        improvement = best_val_content_loss - val_content_loss  
+        # Check if PSNR improved 
+        improvement = val_psnr - best_val_psnr  
         has_improved = improvement > EARLY_STOPPING_MIN_DELTA
         
         # Save Best Model
         if has_improved:
-            best_val_content_loss = val_content_loss  
+            best_val_psnr = val_psnr  
             epochs_without_improvement = 0
-            logger.info(f"New best model found at epoch {epoch}! (Improvement: {improvement:.4f}) Saving to '{BEST_MODEL_PATH}'")
+            logger.info(f"New best model found at epoch {epoch}! (PSNR improvement: +{improvement:.4f} dB) Saving to '{BEST_MODEL_PATH}'")
             save_model(
                 generator=generator,
                 discriminator=discriminator,
@@ -385,11 +394,11 @@ def main():
                 epoch=epoch,
                 g_loss=avg_g_loss,
                 d_loss=avg_d_loss,
-                val_content_loss=best_val_content_loss  
+                val_psnr=best_val_psnr  
             )
         else:
             epochs_without_improvement += 1
-            logger.info(f"No improvement for {epochs_without_improvement} epoch(s). Best Content Loss: {best_val_content_loss:.4f}")  
+            logger.info(f"No improvement for {epochs_without_improvement} epoch(s). Best PSNR: {best_val_psnr:.4f} dB")  
         
         # Save a checkpoint every 5 epochs
         if epoch % 5 == 0:
@@ -403,7 +412,7 @@ def main():
                 epoch=epoch,
                 g_loss=avg_g_loss,
                 d_loss=avg_d_loss,
-                val_content_loss=val_content_loss 
+                val_psnr=val_psnr 
             )
         
         # Step the learning rate schedulers
@@ -412,11 +421,11 @@ def main():
         
         if USE_EARLY_STOPPING and epochs_without_improvement >= EARLY_STOPPING_PATIENCE:
             logger.info(f"Early stopping triggered! No improvement for {EARLY_STOPPING_PATIENCE} epochs.")
-            logger.info(f"Best Validation Content Loss achieved: {best_val_content_loss:.4f} at epoch {epoch - epochs_without_improvement}")  
+            logger.info(f"Best Validation PSNR achieved: {best_val_psnr:.4f} dB at epoch {epoch - epochs_without_improvement}")  
             break
 
     logger.info("Training finished.")
-    logger.info(f"Best Validation Content Loss achieved: {best_val_content_loss:.4f} at '{BEST_MODEL_PATH}'")  
+    logger.info(f"Best Validation PSNR achieved: {best_val_psnr:.4f} dB at '{BEST_MODEL_PATH}'")  
 
 if __name__ == "__main__":
     main()
