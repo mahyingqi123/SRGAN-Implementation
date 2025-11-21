@@ -50,10 +50,6 @@ Dataset used:
 
 The novelty of this architecture is the replacement of the traditional MSE loss with a perceptual loss. By using a metric that considers more than just peak signal to noise ratio, the model is able to generate more realistic images with better details on textures and edges. This is because PSNR measures the differences pixel by pixel, instead of the perceptual differences between the original and the generated image in human eye.
 
-## Data Preprocessing
-
-**Obtaining downsampled images:** Applying gaussian filter to original images then downsampling by a factor of 4.
-
 ## Architecture
 
 ### Generator
